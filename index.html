@@ -1,0 +1,1407 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>파닥파닥 새 플래피 버디 - 쉬는시간 스페셜</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Jua for playful retro feel, Noto Sans KR for clean UI) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            background-color: #0f172a;
+        }
+        .font-jua {
+            font-family: 'Jua', sans-serif;
+        }
+        #gameCanvas {
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+            border-radius: 1.5rem;
+            cursor: pointer;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+        }
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.04); opacity: 0.92; }
+        }
+        .animate-pulse-glow {
+            animation: pulseGlow 1.6s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col justify-between items-center p-2 sm:p-4 overflow-x-hidden">
+
+    <!-- Top Header Navigation -->
+    <header class="w-full max-w-md flex justify-between items-center bg-slate-800/90 backdrop-blur border border-slate-700/80 px-4 py-2.5 rounded-2xl mb-2 shadow-lg">
+        <div class="flex items-center gap-2.5">
+            <span class="text-2xl animate-bounce">🐦</span>
+            <div>
+                <h1 class="font-jua text-xl text-sky-400 leading-none">파닥파닥 새 플래피 버디</h1>
+                <p class="text-[11px] text-slate-400">고등학교 쉬는시간 스페셜</p>
+            </div>
+        </div>
+
+        <!-- School Break Time Countdown Timer -->
+        <div class="flex items-center gap-2 bg-slate-900/90 px-3 py-1.5 rounded-xl border border-sky-500/30">
+            <i class="fa-solid fa-clock text-sky-400 text-xs animate-pulse"></i>
+            <div class="text-right">
+                <div class="text-[9px] text-slate-400 uppercase font-semibold">쉬는시간 남은시간</div>
+                <div id="breakTimer" class="font-jua text-sky-300 text-sm leading-none">10:00</div>
+            </div>
+            <button id="resetTimerBtn" title="타이머 리셋" class="text-xs text-slate-400 hover:text-sky-300 ml-1 p-0.5 transition">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Game Frame Container -->
+    <main class="relative w-full max-w-md aspect-[3/4] sm:aspect-[4/5] bg-slate-950 rounded-3xl p-1 border-2 border-slate-700/80 shadow-2xl flex flex-col justify-center items-center overflow-hidden">
+        
+        <!-- Game Canvas Surface -->
+        <canvas id="gameCanvas" class="w-full h-full block bg-sky-300"></canvas>
+
+        <!-- Top In-Game HUD (Score Display Top-Center with Best Score) -->
+        <div id="hudOverlay" class="absolute top-4 left-0 right-0 flex justify-center items-center pointer-events-none transition-opacity duration-200 opacity-0 z-10">
+            <div class="bg-slate-900/90 backdrop-blur-md px-5 py-2 rounded-2xl border border-sky-400/40 shadow-xl flex flex-col items-center min-w-[130px]">
+                <div class="flex items-center gap-2">
+                    <span id="hudDiffTag" class="text-[10px] font-bold px-1.5 py-0.5 rounded border bg-sky-400/10 border-sky-400/40 text-sky-400 uppercase">보통</span>
+                    <span class="text-[11px] font-bold text-sky-400 uppercase tracking-widest">점수</span>
+                    <span id="scoreText" class="font-jua text-3xl text-sky-300 min-w-[28px] text-center leading-none">0</span>
+                </div>
+                <!-- Small High Score Indicator (~1/4 font size) -->
+                <div class="text-[10px] font-bold text-emerald-400/90 tracking-tight flex items-center gap-1 border-t border-slate-800/80 pt-1 mt-0.5 w-full justify-center">
+                    <span>👑 최고 기록:</span>
+                    <span id="hudBestScore" class="font-jua text-xs text-emerald-300">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Start Screen Overlay -->
+        <div id="startModal" class="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col justify-between p-5 z-20 text-center transition-all duration-300">
+            <div class="mt-2">
+                <div class="inline-block bg-sky-400/20 text-sky-300 border border-sky-400/40 px-3 py-1 rounded-full text-xs font-bold mb-2 animate-bounce">
+                    🏫 High School Break Time Edition
+                </div>
+                <h2 class="font-jua text-3xl sm:text-4xl text-sky-400 drop-shadow-lg mb-1">파닥파닥 새 플래피 버디</h2>
+                <p class="text-xs text-slate-300">초록색 기둥을 피하고 전교 1등에 도전해보세요!</p>
+            </div>
+
+            <!-- Cute Blue Bird Preview & Difficulty Selector -->
+            <div class="my-auto py-1 flex flex-col items-center">
+                <div class="w-16 h-16 bg-sky-400/20 border-2 border-sky-400/60 rounded-full flex items-center justify-center mb-2 shadow-inner">
+                    <span class="text-4xl animate-bounce">🐥</span>
+                </div>
+
+                <!-- Difficulty Select Buttons -->
+                <div class="w-full max-w-xs mb-3">
+                    <div class="text-xs font-bold text-sky-300 mb-2 flex items-center justify-center gap-1.5 bg-slate-900/90 py-1.5 px-3 rounded-xl border border-sky-500/30">
+                        <i class="fa-solid fa-gauge-high text-sky-400"></i> 난이도를 먼저 선택해주세요!
+                    </div>
+                    <div class="grid grid-cols-3 gap-1.5">
+                        <button type="button" data-diff="EASY" class="diff-btn py-2.5 rounded-xl text-xs font-jua border border-slate-700 bg-slate-900/80 text-slate-400 hover:text-white transition cursor-pointer">
+                            🌱 쉬움
+                        </button>
+                        <button type="button" data-diff="NORMAL" class="diff-btn active py-2.5 rounded-xl text-xs font-jua border-2 border-sky-400 bg-sky-500/20 text-sky-300 font-bold shadow-md transition cursor-pointer">
+                            🐥 보통
+                        </button>
+                        <button type="button" data-diff="HARD" class="diff-btn py-2.5 rounded-xl text-xs font-jua border border-slate-700 bg-slate-900/80 text-slate-400 hover:text-white transition cursor-pointer">
+                            🔥 어려움
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-slate-900/90 border border-slate-700 rounded-2xl p-2.5 max-w-xs text-xs text-slate-300 space-y-1 shadow-md">
+                    <div class="flex items-center justify-center gap-2 text-sky-300 font-bold">
+                        <i class="fa-solid fa-hand-pointer"></i> 조작 방법
+                    </div>
+                    <div>
+                        <kbd class="px-2 py-0.5 bg-slate-800 border border-slate-600 rounded text-sky-300 font-bold">Spacebar</kbd> 또는 <kbd class="px-2 py-0.5 bg-slate-800 border border-slate-600 rounded text-sky-300 font-bold">화면 클릭/터치</kbd>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Start Game Button -->
+            <button id="startGameBtn" class="w-full py-3.5 bg-gradient-to-r from-sky-400 via-blue-500 to-sky-400 hover:from-sky-300 hover:to-blue-400 text-white font-jua text-2xl rounded-2xl shadow-xl transform active:scale-95 transition-all flex justify-center items-center gap-2 animate-pulse-glow cursor-pointer">
+                <i class="fa-solid fa-play"></i> 선택한 난이도로 게임 시작
+            </button>
+        </div>
+
+        <!-- Game Over Screen Overlay -->
+        <div id="gameOverModal" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col justify-between p-6 z-30 text-center animate-fade-in">
+            <div class="mt-2">
+                <div class="text-3xl mb-1">💥</div>
+                <h2 id="gameOverTitle" class="font-jua text-3xl sm:text-4xl text-red-500 drop-shadow">게임 오버!</h2>
+                <p id="gameOverSub" class="text-xs text-slate-400 mt-0.5">다음 교시 종 치기 전에 한 판 더?</p>
+            </div>
+
+            <!-- Result Score Card -->
+            <div class="bg-slate-900/90 border border-slate-700/80 rounded-2xl p-4 my-auto shadow-xl">
+                <div class="text-xs text-slate-400 mb-1">최종 점수</div>
+                <div id="finalScore" class="font-jua text-5xl text-sky-400 mb-3">0</div>
+                
+                <div class="grid grid-cols-2 gap-2 bg-slate-800/80 p-3 rounded-xl border border-slate-700/60 mb-3 text-xs">
+                    <div>
+                        <span class="text-slate-400">학교 등급:</span>
+                        <div id="schoolRankGrade" class="font-bold text-sky-300 text-sm mt-0.5">전교 꼴찌</div>
+                    </div>
+                    <div>
+                        <span id="bestScoreLabel" class="text-slate-400">내 최고 기록(보통):</span>
+                        <div id="bestScore" class="font-bold text-emerald-400 text-sm mt-0.5">0</div>
+                    </div>
+                </div>
+
+                <!-- Nickname Input for High School Leaderboard -->
+                <div class="flex gap-2 mt-2">
+                    <input type="text" id="playerNameInput" maxlength="8" placeholder="이름 / 반 번호 입력" class="flex-1 bg-slate-800 border border-slate-600 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-sky-400">
+                    <button id="saveScoreBtn" class="bg-sky-500 hover:bg-sky-400 text-white font-bold px-3 py-2 rounded-xl text-xs transition active:scale-95">
+                        랭킹 등록
+                    </button>
+                </div>
+            </div>
+
+            <!-- Action Buttons (Restart & Main Menu) -->
+            <div class="flex gap-2 mt-3">
+                <button id="restartBtn" class="flex-1 py-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-500 hover:from-emerald-400 hover:to-teal-400 text-white font-jua text-xl rounded-2xl shadow-xl transform active:scale-95 transition flex justify-center items-center gap-2">
+                    <i class="fa-solid fa-rotate-right"></i> 다시 시작
+                </button>
+                <button id="mainMenuBtn" title="메인 화면으로" class="py-3 px-4 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 font-jua text-base rounded-2xl transition active:scale-95 flex items-center justify-center">
+                    <i class="fa-solid fa-house text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Bottom Footer Navigation -->
+    <footer class="w-full max-w-md mt-2 flex justify-between items-center gap-2">
+        <button id="leaderboardBtn" class="flex-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 py-2.5 px-3 rounded-xl text-xs font-bold text-slate-300 flex items-center justify-center gap-2 transition active:scale-95 shadow">
+            <i class="fa-solid fa-trophy text-amber-400"></i> 전교 명예의 전당
+        </button>
+        <button id="soundToggleBtn" title="음소거 토글" class="bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-2.5 rounded-xl text-xs font-bold text-slate-300 transition active:scale-95 shadow">
+            <i id="soundIcon" class="fa-solid fa-volume-high text-sky-400"></i>
+        </button>
+    </footer>
+
+    <!-- Leaderboard Drawer Modal -->
+    <div id="leaderboardModal" class="hidden fixed inset-0 bg-slate-950/80 backdrop-blur-md z-40 flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-700 w-full max-w-md rounded-3xl p-5 shadow-2xl flex flex-col gap-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-jua text-2xl text-sky-400 flex items-center gap-2">
+                    <i class="fa-solid fa-medal text-amber-400"></i> 쉬는시간 전교 랭킹
+                </h3>
+                <button onclick="closeModal('leaderboardModal')" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Leaderboard Items List -->
+            <div class="space-y-2 max-h-72 overflow-y-auto pr-1" id="leaderboardList">
+                <!-- Dynamically populated ranking list -->
+            </div>
+
+            <div class="flex justify-between items-center gap-2 pt-2 border-t border-slate-800">
+                <button onclick="clearLeaderboard()" class="text-xs text-red-400 hover:text-red-300 underline p-1">
+                    기록 초기화
+                </button>
+                <button onclick="closeModal('leaderboardModal')" class="px-5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl font-jua text-slate-200 text-sm">
+                    닫기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Safe LocalStorage Utility Helpers
+        function safeGetStorage(key, fallback = '0') {
+            try {
+                return localStorage.getItem(key) || fallback;
+            } catch (e) {
+                return fallback;
+            }
+        }
+
+        function safeSetStorage(key, value) {
+            try {
+                localStorage.setItem(key, value);
+            } catch (e) {}
+        }
+
+        // Difficulty Configurations
+        let selectedDifficulty = 'NORMAL';
+        const DIFFICULTY_CONFIGS = {
+            EASY: {
+                name: '쉬움',
+                colorClass: 'text-emerald-400',
+                bgClass: 'bg-emerald-500/20 border-emerald-400 text-emerald-300',
+                basePipeSpeed: 1.6,
+                speedScale: 0.4,
+                baseGap: 185,
+                minGap: 145,
+                gravityList: [0.12, 0.15, 0.18, 0.22, 0.26, 0.30],
+                jumpList: [-4.0, -4.4, -4.8, -5.3, -5.8, -6.3]
+            },
+            NORMAL: {
+                name: '보통',
+                colorClass: 'text-sky-400',
+                bgClass: 'bg-sky-500/20 border-sky-400 text-sky-300',
+                basePipeSpeed: 2.2,
+                speedScale: 0.8,
+                baseGap: 155,
+                minGap: 125,
+                gravityList: [0.18, 0.24, 0.30, 0.36, 0.43, 0.50],
+                jumpList: [-4.8, -5.5, -6.2, -6.8, -7.5, -8.2]
+            },
+            HARD: {
+                name: '어려움',
+                colorClass: 'text-rose-400',
+                bgClass: 'bg-rose-500/20 border-rose-400 text-rose-300',
+                basePipeSpeed: 3.2,
+                speedScale: 1.2,
+                baseGap: 125,
+                minGap: 95,
+                gravityList: [0.30, 0.38, 0.45, 0.52, 0.60, 0.68],
+                jumpList: [-6.0, -6.8, -7.4, -8.0, -8.6, -9.3]
+            }
+        };
+
+        class SoundEffects {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    if (AudioContext) {
+                        this.ctx = new AudioContext();
+                    }
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            playJump() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 0.12);
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.12);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.12);
+                } catch (e) {}
+            }
+
+            playScore() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(523.25, this.ctx.currentTime);
+                    osc.frequency.setValueAtTime(659.25, this.ctx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.2);
+                } catch (e) {}
+            }
+
+            playHit() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(180, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.25);
+                    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.25);
+                } catch (e) {}
+            }
+
+            playShield() {
+                if (this.muted) return;
+                this.init();
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(320, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880, this.ctx.currentTime + 0.35);
+                    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, this.ctx.currentTime + 0.35);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.35);
+                } catch (e) {}
+            }
+        }
+
+        let gameState = 'START'; // 'START', 'PLAYING', 'GAMEOVER'
+        let currentScore = 0;
+        let gravity = 0.18;
+        let jumpImpulse = -4.8;
+        let pipeSpeed = 2.2;
+
+        let spawnInterval = 100;
+        let spawnTimer = 0;
+        let skyTimeTicks = 0;
+        let totalPipesSpawned = 0;
+        let pipes = [];
+        let shieldItems = [];
+        let clouds = [];
+        let stars = [];
+        let particles = [];
+        let feathers = [];
+        let bird = null;
+        let animationFrameId = null;
+
+        const sounds = new SoundEffects();
+
+        // Update Physics Parameters Based On Score & Difficulty
+        function updatePhysicsSettings() {
+            const cfg = DIFFICULTY_CONFIGS[selectedDifficulty] || DIFFICULTY_CONFIGS.NORMAL;
+            const levelIndex = Math.min(Math.floor(currentScore / 10), cfg.gravityList.length - 1);
+            gravity = cfg.gravityList[levelIndex];
+            jumpImpulse = cfg.jumpList[levelIndex];
+        }
+
+        // High Score Helper Function per Difficulty
+        function getBestScore() {
+            return parseInt(safeGetStorage(`flappyBuddy_best_${selectedDifficulty}`, '0'), 10);
+        }
+
+        function updateBestScoreDisplays() {
+            const best = getBestScore();
+            const cfg = DIFFICULTY_CONFIGS[selectedDifficulty] || DIFFICULTY_CONFIGS.NORMAL;
+            
+            const hudBest = document.getElementById('hudBestScore');
+            if (hudBest) hudBest.innerText = best;
+            
+            const endBest = document.getElementById('bestScore');
+            if (endBest) endBest.innerText = best;
+
+            const bestLabel = document.getElementById('bestScoreLabel');
+            if (bestLabel) bestLabel.innerText = `내 최고 기록(${cfg.name}):`;
+
+            const hudTag = document.getElementById('hudDiffTag');
+            if (hudTag) {
+                hudTag.innerText = cfg.name;
+                hudTag.className = `text-[10px] font-bold px-1.5 py-0.5 rounded border bg-slate-900/90 ${cfg.colorClass} border-current uppercase`;
+            }
+        }
+
+        // Difficulty Selection UI Handler
+        document.querySelectorAll('.diff-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const diff = btn.getAttribute('data-diff');
+                if (diff && DIFFICULTY_CONFIGS[diff]) {
+                    selectedDifficulty = diff;
+                    document.querySelectorAll('.diff-btn').forEach(b => {
+                        b.classList.remove('active', 'border-2', 'bg-sky-500/20', 'bg-emerald-500/20', 'bg-rose-500/20', 'text-sky-300', 'text-emerald-300', 'text-rose-300', 'border-sky-400', 'border-emerald-400', 'border-rose-400', 'font-bold', 'shadow-md');
+                        b.classList.add('border-slate-700', 'bg-slate-900/80', 'text-slate-400');
+                    });
+
+                    btn.classList.remove('border-slate-700', 'bg-slate-900/80', 'text-slate-400');
+                    btn.classList.add('active', 'border-2', 'font-bold', 'shadow-md');
+                    if (diff === 'EASY') btn.classList.add('bg-emerald-500/20', 'border-emerald-400', 'text-emerald-300');
+                    else if (diff === 'NORMAL') btn.classList.add('bg-sky-500/20', 'border-sky-400', 'text-sky-300');
+                    else if (diff === 'HARD') btn.classList.add('bg-rose-500/20', 'border-rose-400', 'text-rose-300');
+
+                    updateBestScoreDisplays();
+                    updatePhysicsSettings();
+                }
+            });
+        });
+
+        // Canvas Responsive Setup
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width || 360;
+            canvas.height = rect.height || 480;
+        }
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        // Color Lerp Utility for Smooth Sky Transition
+        function lerpColor(c1, c2, t) {
+            const r = Math.round(c1[0] + (c2[0] - c1[0]) * t);
+            const g = Math.round(c1[1] + (c2[1] - c1[1]) * t);
+            const b = Math.round(c1[2] + (c2[2] - c1[2]) * t);
+            return `rgb(${r},${g},${b})`;
+        }
+
+        // Initialize Twinkling Stars
+        for (let i = 0; i < 35; i++) {
+            stars.push({
+                x: Math.random(),
+                y: Math.random() * 0.6,
+                size: Math.random() * 1.8 + 0.8,
+                alpha: Math.random() * 0.7 + 0.3
+            });
+        }
+
+        class Bird {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = canvas.width * 0.28;
+                this.y = canvas.height * 0.45;
+                this.radius = 16;
+                this.vy = 0;
+                this.rotation = 0;
+                this.wingAngle = 0;
+                this.alive = true;
+                this.shieldTimeLeft = 0;
+            }
+
+            jump() {
+                if (!this.alive) return;
+                this.vy = jumpImpulse;
+                sounds.playJump();
+
+                // 5 Perspective Feathers Ejecting in Fan Shape
+                const featherScales = [0.45, 0.75, 1.0, 1.25, 1.55];
+                featherScales.forEach((scale, idx) => {
+                    feathers.push(new Feather(
+                        this.x - 8,
+                        this.y + (Math.random() * 12 - 6),
+                        scale,
+                        idx
+                    ));
+                });
+
+                for (let i = 0; i < 3; i++) {
+                    particles.push(new Particle(
+                        this.x - 6,
+                        this.y + 6,
+                        (Math.random() - 0.5) * 3,
+                        Math.random() * 2 + 1,
+                        '#ffffff',
+                        14
+                    ));
+                }
+            }
+
+            update() {
+                if (this.shieldTimeLeft > 0) {
+                    this.shieldTimeLeft -= 1000 / 60;
+                    if (this.shieldTimeLeft < 0) this.shieldTimeLeft = 0;
+                }
+
+                if (!this.alive) {
+                    if (this.y < canvas.height - 35 - this.radius) {
+                        this.y += 6;
+                        this.rotation = Math.min(Math.PI / 2, this.rotation + 0.12);
+                    }
+                    return;
+                }
+
+                this.vy += gravity;
+                this.y += this.vy;
+
+                this.rotation = Math.max(-0.4, Math.min(Math.PI / 2, this.vy * 0.08));
+                this.wingAngle += 0.25;
+
+                if (this.y - this.radius <= 0) {
+                    this.y = this.radius;
+                    this.vy = 0;
+                }
+
+                const groundY = canvas.height - 35;
+                if (this.y + this.radius >= groundY) {
+                    this.y = groundY - this.radius;
+                    if (this.shieldTimeLeft <= 0) {
+                        this.die();
+                    }
+                }
+            }
+
+            die() {
+                if (!this.alive || this.shieldTimeLeft > 0) return;
+                this.alive = false;
+                sounds.playHit();
+
+                for (let i = 0; i < 15; i++) {
+                    particles.push(new Particle(
+                        this.x,
+                        this.y,
+                        (Math.random() - 0.5) * 6,
+                        (Math.random() - 0.5) * 6,
+                        '#ef4444',
+                        22
+                    ));
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                if (this.shieldTimeLeft > 0) {
+                    ctx.save();
+                    const shieldAlpha = Math.min(1, this.shieldTimeLeft / 500);
+                    const pulse = Math.sin(Date.now() * 0.01) * 3;
+                    
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius + 9 + pulse, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(56, 189, 248, ${0.28 * shieldAlpha})`;
+                    ctx.fill();
+                    ctx.strokeStyle = `rgba(14, 165, 233, ${0.85 * shieldAlpha})`;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+
+                    // Active Shield Badge Display
+                    ctx.fillStyle = '#0ea5e9';
+                    ctx.font = 'bold 11px sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(`🛡️ ${(this.shieldTimeLeft / 1000).toFixed(1)}s`, 0, -this.radius - 14);
+                    ctx.restore();
+                }
+
+                ctx.rotate(this.rotation);
+
+                const featherWiggle = Math.sin(this.wingAngle * 0.8) * 2;
+
+                // Head Feather / Tuft
+                ctx.beginPath();
+                ctx.moveTo(-2, -14);
+                ctx.quadraticCurveTo(-6 + featherWiggle, -24, -1, -25);
+                ctx.quadraticCurveTo(1, -20, 2, -14);
+                ctx.fillStyle = '#60a5fa';
+                ctx.fill();
+                ctx.strokeStyle = '#2563eb';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(1, -14);
+                ctx.quadraticCurveTo(5 + featherWiggle, -22, 9, -21);
+                ctx.quadraticCurveTo(7, -17, 4, -13);
+                ctx.fillStyle = '#93c5fd';
+                ctx.fill();
+                ctx.stroke();
+
+                // Cute Tiny Tail Feather
+                ctx.beginPath();
+                ctx.ellipse(-16, 2, 6, 3.5, Math.PI / 4, 0, Math.PI * 2);
+                ctx.fillStyle = '#60a5fa';
+                ctx.fill();
+                ctx.stroke();
+
+                // Main Body
+                const bodyGrad = ctx.createRadialGradient(-3, -3, 2, 0, 0, this.radius);
+                bodyGrad.addColorStop(0, '#93c5fd');
+                bodyGrad.addColorStop(0.65, '#3b82f6');
+                bodyGrad.addColorStop(1, '#2563eb');
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = bodyGrad;
+                ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#1e3a8a';
+                ctx.stroke();
+
+                // White Tummy Patch
+                ctx.beginPath();
+                ctx.ellipse(3, 5, 10, 8, Math.PI / 8, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+
+                // Flapping Wing
+                ctx.beginPath();
+                const wingY = Math.sin(this.wingAngle) * 3;
+                ctx.ellipse(-6, wingY + 1, 7, 4.5, Math.PI / 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#bfdbfe';
+                ctx.fill();
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#1d4ed8';
+                ctx.stroke();
+
+                // Sparkling Eyes
+                ctx.beginPath();
+                ctx.arc(6, -4, 6.5, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+                ctx.strokeStyle = '#1e293b';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(6.8, -4, 4.8, 0, Math.PI * 2);
+                ctx.fillStyle = '#0f172a';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(8.2, -6, 2.2, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(5.2, -2.3, 1.1, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+
+                // Rosy Pink Blush Cheek
+                ctx.beginPath();
+                ctx.arc(1.5, 5, 4.5, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(251, 113, 133, 0.7)';
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.arc(0.5, 4, 1, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.fill();
+
+                // Tiny Beak
+                ctx.beginPath();
+                ctx.moveTo(11, -3);
+                ctx.quadraticCurveTo(19, -1, 18, 3);
+                ctx.quadraticCurveTo(14, 5, 11, 4);
+                ctx.closePath();
+                ctx.fillStyle = '#fb923c';
+                ctx.fill();
+                ctx.strokeStyle = '#ea580c';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.arc(13.5, -0.5, 1, 0, Math.PI * 2);
+                ctx.fillStyle = '#ffedd5';
+                ctx.fill();
+
+                ctx.restore();
+            }
+        }
+
+        class Pipe {
+            constructor(x) {
+                this.x = x;
+                this.width = 54;
+                const cfg = DIFFICULTY_CONFIGS[selectedDifficulty] || DIFFICULTY_CONFIGS.NORMAL;
+                this.gap = Math.max(cfg.minGap, cfg.baseGap - Math.floor(currentScore / 5) * 2);
+                this.topHeight = Math.random() * (canvas.height - 180 - this.gap) + 40;
+                this.bottomY = this.topHeight + this.gap;
+                this.passed = false;
+            }
+
+            update() {
+                this.x -= pipeSpeed;
+            }
+
+            draw() {
+                ctx.save();
+                const pipeGrad = ctx.createLinearGradient(this.x, 0, this.x + this.width, 0);
+                pipeGrad.addColorStop(0, '#15803d');
+                pipeGrad.addColorStop(0.2, '#22c55e');
+                pipeGrad.addColorStop(0.7, '#4ade80');
+                pipeGrad.addColorStop(1, '#166534');
+
+                // Top Pipe Body
+                ctx.fillStyle = pipeGrad;
+                ctx.fillRect(this.x, 0, this.width, this.topHeight);
+                ctx.strokeStyle = '#14532d';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(this.x, 0, this.width, this.topHeight);
+
+                // Top Pipe Rim / Cap
+                const rimHeight = 22;
+                const rimExtra = 5;
+                ctx.fillRect(this.x - rimExtra, this.topHeight - rimHeight, this.width + rimExtra * 2, rimHeight);
+                ctx.strokeRect(this.x - rimExtra, this.topHeight - rimHeight, this.width + rimExtra * 2, rimHeight);
+
+                // Bottom Pipe Body
+                const bottomHeight = canvas.height - 35 - this.bottomY;
+                ctx.fillRect(this.x, this.bottomY, this.width, bottomHeight);
+                ctx.strokeRect(this.x, this.bottomY, this.width, bottomHeight);
+
+                // Bottom Pipe Rim / Cap
+                ctx.fillRect(this.x - rimExtra, this.bottomY, this.width + rimExtra * 2, rimHeight);
+                ctx.strokeRect(this.x - rimExtra, this.bottomY, this.width + rimExtra * 2, rimHeight);
+
+                ctx.restore();
+            }
+
+            checkCollision(bird) {
+                if (!bird.alive || bird.shieldTimeLeft > 0) return false;
+                
+                const birdLeft = bird.x - bird.radius + 3;
+                const birdRight = bird.x + bird.radius - 3;
+                const birdTop = bird.y - bird.radius + 3;
+                const birdBottom = bird.y + bird.radius - 3;
+
+                const rimExtra = 5;
+                const pipeLeft = this.x - rimExtra;
+                const pipeRight = this.x + this.width + rimExtra;
+
+                if (birdRight > pipeLeft && birdLeft < pipeRight) {
+                    if (birdTop < this.topHeight) return true;
+                    if (birdBottom > this.bottomY) return true;
+                }
+
+                return false;
+            }
+        }
+
+        class ShieldItem {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.radius = 15;
+                this.collected = false;
+                this.pulse = 0;
+            }
+
+            update() {
+                this.x -= pipeSpeed;
+                this.pulse += 0.08;
+            }
+
+            draw() {
+                if (this.collected) return;
+                ctx.save();
+                ctx.translate(this.x, this.y);
+
+                const glow = Math.sin(this.pulse) * 4;
+                const grad = ctx.createRadialGradient(0, 0, 3, 0, 0, this.radius + glow);
+                grad.addColorStop(0, 'rgba(56, 189, 248, 0.9)');
+                grad.addColorStop(0.6, 'rgba(129, 140, 248, 0.6)');
+                grad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(0, 0, this.radius + glow, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.font = '16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('🛡️', 0, 0);
+
+                ctx.restore();
+            }
+
+            checkCollect(bird) {
+                if (this.collected || !bird.alive) return false;
+                const dx = bird.x - this.x;
+                const dy = bird.y - this.y;
+                return Math.hypot(dx, dy) < bird.radius + this.radius;
+            }
+        }
+
+        class Feather {
+            constructor(x, y, scale, depthIndex) {
+                this.x = x;
+                this.y = y;
+                this.scale = scale;
+                
+                const spreadAngle = (Math.random() - 0.5) * 1.6;
+                const speed = (Math.random() * 2.8 + 1.8) * (0.8 + scale * 0.25);
+                this.vx = -Math.cos(spreadAngle) * speed;
+                this.vy = Math.sin(spreadAngle) * speed * 1.1;
+                
+                this.rotation = (Math.random() - 0.5) * Math.PI;
+                this.rotSpeed = (Math.random() - 0.5) * 0.22;
+                this.maxLife = 42 + Math.floor(scale * 16);
+                this.life = this.maxLife;
+                
+                const colors = ['#bfdbfe', '#93c5fd', '#ffffff', '#60a5fa', '#dbeafe'];
+                this.color = colors[depthIndex % colors.length];
+                this.alpha = scale < 0.7 ? 0.65 : 1.0;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.07;
+                this.vx *= 0.95;
+                this.rotation += this.rotSpeed;
+                this.life--;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.scale(this.scale, this.scale);
+
+                const lifeRatio = Math.max(0, this.life / this.maxLife);
+                ctx.globalAlpha = lifeRatio * this.alpha;
+
+                ctx.beginPath();
+                ctx.moveTo(0, -7);
+                ctx.quadraticCurveTo(4, -3, 3, 4);
+                ctx.quadraticCurveTo(0, 8, -1, 8);
+                ctx.quadraticCurveTo(-4, 3, -3, -3);
+                ctx.closePath();
+                ctx.fillStyle = this.color;
+                ctx.fill();
+
+                ctx.beginPath();
+                ctx.moveTo(0, -9);
+                ctx.quadraticCurveTo(0.5, 0, 0, 10);
+                ctx.strokeStyle = '#3b82f6';
+                ctx.lineWidth = 0.8;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+        }
+
+        class Cloud {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * (canvas.height * 0.45);
+                this.speed = Math.random() * 0.4 + 0.2;
+                this.scale = Math.random() * 0.5 + 0.6;
+            }
+
+            update() {
+                this.x -= this.speed;
+                if (this.x < -100) this.x = canvas.width + 50;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 18 * this.scale, 0, Math.PI * 2);
+                ctx.arc(this.x + 14 * this.scale, this.y - 6 * this.scale, 14 * this.scale, 0, Math.PI * 2);
+                ctx.arc(this.x + 28 * this.scale, this.y, 18 * this.scale, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class Particle {
+            constructor(x, y, vx, vy, color, life) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx;
+                this.vy = vy;
+                this.color = color;
+                this.maxLife = life;
+                this.life = life;
+                this.size = Math.random() * 3 + 2;
+            }
+
+            update() {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.life--;
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, this.life / this.maxLife);
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        // Initialize Background Entities
+        for (let i = 0; i < 5; i++) clouds.push(new Cloud());
+        bird = new Bird();
+
+        function triggerJump() {
+            sounds.init();
+            if (gameState === 'PLAYING') {
+                bird.jump();
+            }
+        }
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' || e.code === 'ArrowUp') {
+                e.preventDefault();
+                if (gameState === 'START') {
+                    startGame();
+                } else if (gameState === 'PLAYING') {
+                    triggerJump();
+                }
+            }
+        });
+
+        document.getElementById('startGameBtn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (gameState === 'START') {
+                startGame();
+            }
+        });
+
+        canvas.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            if (gameState === 'PLAYING') {
+                triggerJump();
+            }
+        });
+
+        function startGame() {
+            sounds.init();
+            gameState = 'PLAYING';
+            currentScore = 0;
+            const cfg = DIFFICULTY_CONFIGS[selectedDifficulty] || DIFFICULTY_CONFIGS.NORMAL;
+            pipeSpeed = cfg.basePipeSpeed;
+            spawnInterval = Math.max(30, Math.round(220 / pipeSpeed));
+            spawnTimer = 0;
+            skyTimeTicks = 0;
+            totalPipesSpawned = 0;
+            pipes = [];
+            shieldItems = [];
+            particles = [];
+            feathers = [];
+
+            updatePhysicsSettings();
+            bird.reset();
+
+            document.getElementById('scoreText').innerText = '0';
+            updateBestScoreDisplays();
+            document.getElementById('hudOverlay').classList.remove('opacity-0');
+            document.getElementById('startModal').classList.add('hidden');
+            document.getElementById('gameOverModal').classList.add('hidden');
+
+            if (!animationFrameId) {
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        function getSchoolRank(score) {
+            if (score >= 50) return '수능 만점자 💯';
+            if (score >= 35) return '전교 1등 🏆';
+            if (score >= 25) return '전교 10등 🏅';
+            if (score >= 15) return '반장 / 부반장 🎖️';
+            if (score >= 8) return '쉬는시간의 제왕 👑';
+            if (score >= 3) return '평범한 고등학생 🏫';
+            return '전교 꼴찌 🐣';
+        }
+
+        function triggerGameOver() {
+            if (gameState === 'GAMEOVER') return;
+            gameState = 'GAMEOVER';
+            document.getElementById('hudOverlay').classList.add('opacity-0');
+            document.getElementById('finalScore').innerText = currentScore;
+            document.getElementById('schoolRankGrade').innerText = getSchoolRank(currentScore);
+            
+            const best = getBestScore();
+            if (currentScore > best) {
+                safeSetStorage(`flappyBuddy_best_${selectedDifficulty}`, currentScore.toString());
+            }
+            updateBestScoreDisplays();
+
+            document.getElementById('gameOverModal').classList.remove('hidden');
+        }
+
+        function drawGround() {
+            ctx.save();
+            const groundY = canvas.height - 35;
+            
+            const groundGrad = ctx.createLinearGradient(0, groundY, 0, canvas.height);
+            groundGrad.addColorStop(0, '#22c55e');
+            groundGrad.addColorStop(0.2, '#16a34a');
+            groundGrad.addColorStop(0.21, '#78350f');
+            groundGrad.addColorStop(1, '#451a03');
+
+            ctx.fillStyle = groundGrad;
+            ctx.fillRect(0, groundY, canvas.width, 35);
+
+            ctx.strokeStyle = '#15803d';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(0, groundY);
+            ctx.lineTo(canvas.width, groundY);
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Dynamic Day -> Sunset -> Dusk -> Night Sky Cycle
+            if (gameState === 'PLAYING') {
+                skyTimeTicks += 0.0006;
+            }
+
+            const progress = skyTimeTicks % 1.0;
+
+            const dayTop = [56, 189, 248], dayBot = [186, 230, 253];
+            const sunsetTop = [217, 70, 239], sunsetBot = [251, 146, 60];
+            const duskTop = [76, 29, 149], duskBot = [225, 29, 72];
+            const nightTop = [2, 6, 23], nightBot = [30, 27, 75];
+
+            let currentTop, currentBot, starOpacity = 0;
+
+            if (progress < 0.3) {
+                const t = progress / 0.3;
+                currentTop = lerpColor(dayTop, sunsetTop, t);
+                currentBot = lerpColor(dayBot, sunsetBot, t);
+            } else if (progress < 0.6) {
+                const t = (progress - 0.3) / 0.3;
+                currentTop = lerpColor(sunsetTop, duskTop, t);
+                currentBot = lerpColor(sunsetBot, duskBot, t);
+            } else if (progress < 0.85) {
+                const t = (progress - 0.6) / 0.25;
+                currentTop = lerpColor(duskTop, nightTop, t);
+                currentBot = lerpColor(duskBot, nightBot, t);
+                starOpacity = t;
+            } else {
+                currentTop = `rgb(${nightTop.join(',')})`;
+                currentBot = `rgb(${nightBot.join(',')})`;
+                starOpacity = 1;
+            }
+
+            const skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGradient.addColorStop(0, currentTop);
+            skyGradient.addColorStop(0.75, currentBot);
+            skyGradient.addColorStop(0.75, '#fef08a');
+            skyGradient.addColorStop(1, '#4ade80');
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Render Night Stars
+            if (starOpacity > 0) {
+                ctx.save();
+                stars.forEach(star => {
+                    const twinkle = Math.sin(Date.now() * 0.003 + star.x * 10) * 0.3 + 0.7;
+                    ctx.fillStyle = `rgba(255, 255, 255, ${star.alpha * starOpacity * twinkle})`;
+                    ctx.beginPath();
+                    ctx.arc(star.x * canvas.width, star.y * canvas.height, star.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+                ctx.restore();
+            }
+
+            // Render Celestial Bodies (Sun / Moon)
+            ctx.save();
+            if (progress < 0.55) {
+                const sunProgress = progress / 0.5;
+                const sunX = canvas.width * (0.15 + sunProgress * 0.65);
+                const sunY = canvas.height * 0.12 + Math.pow(Math.min(1, sunProgress), 1.8) * (canvas.height * 0.38);
+                const sunAlpha = Math.max(0, 1 - Math.pow(Math.min(1, sunProgress), 2.5));
+
+                if (sunAlpha > 0) {
+                    ctx.globalAlpha = sunAlpha;
+
+                    const sunGlow = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 36);
+                    sunGlow.addColorStop(0, 'rgba(254, 240, 138, 0.9)');
+                    sunGlow.addColorStop(0.5, 'rgba(251, 146, 60, 0.4)');
+                    sunGlow.addColorStop(1, 'rgba(245, 158, 11, 0)');
+                    ctx.fillStyle = sunGlow;
+                    ctx.beginPath();
+                    ctx.arc(sunX, sunY, 36, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#fef08a';
+                    ctx.beginPath();
+                    ctx.arc(sunX, sunY, 16, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#f59e0b';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            } else {
+                const moonProgress = Math.min(1, (progress - 0.55) / 0.4);
+                const moonX = canvas.width * 0.78;
+                const moonY = canvas.height * 0.32 - Math.sin(moonProgress * Math.PI * 0.5) * (canvas.height * 0.18);
+                const moonAlpha = Math.min(1, moonProgress * 2.5);
+
+                if (moonAlpha > 0) {
+                    ctx.globalAlpha = moonAlpha;
+
+                    const moonGlow = ctx.createRadialGradient(moonX, moonY, 8, moonX, moonY, 30);
+                    moonGlow.addColorStop(0, 'rgba(254, 240, 138, 0.7)');
+                    moonGlow.addColorStop(1, 'rgba(244, 240, 138, 0)');
+                    ctx.fillStyle = moonGlow;
+                    ctx.beginPath();
+                    ctx.arc(moonX, moonY, 30, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = '#fef08a';
+                    ctx.beginPath();
+                    ctx.arc(moonX, moonY, 15, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.fillStyle = currentTop;
+                    ctx.beginPath();
+                    ctx.arc(moonX - 5, moonY - 4, 13, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.restore();
+
+            clouds.forEach(cloud => {
+                cloud.update();
+                cloud.draw();
+            });
+
+            if (gameState === 'PLAYING') {
+                spawnTimer++;
+                if (spawnTimer >= spawnInterval) {
+                    spawnTimer = 0;
+                    totalPipesSpawned++;
+                    const newPipe = new Pipe(canvas.width + 10);
+                    pipes.push(newPipe);
+
+                    if (totalPipesSpawned % 11 === 0) {
+                        const shieldY = newPipe.topHeight + newPipe.gap / 2;
+                        shieldItems.push(new ShieldItem(newPipe.x + newPipe.width / 2, shieldY));
+                    }
+                }
+
+                // Render & Update Shield Items
+                for (let i = shieldItems.length - 1; i >= 0; i--) {
+                    const item = shieldItems[i];
+                    item.update();
+                    item.draw();
+
+                    if (item.checkCollect(bird)) {
+                        item.collected = true;
+                        bird.shieldTimeLeft = 4000;
+                        sounds.playShield();
+
+                        for (let p = 0; p < 12; p++) {
+                            particles.push(new Particle(
+                                item.x,
+                                item.y,
+                                (Math.random() - 0.5) * 6,
+                                (Math.random() - 0.5) * 6,
+                                '#38bdf8',
+                                22
+                            ));
+                        }
+                        shieldItems.splice(i, 1);
+                    } else if (item.x < -30) {
+                        shieldItems.splice(i, 1);
+                    }
+                }
+
+                for (let i = pipes.length - 1; i >= 0; i--) {
+                    const pipe = pipes[i];
+                    pipe.update();
+                    pipe.draw();
+
+                    if (pipe.checkCollision(bird)) {
+                        bird.die();
+                    }
+
+                    if (!pipe.passed && pipe.x + pipe.width < bird.x) {
+                        pipe.passed = true;
+                        currentScore++;
+
+                        const cfg = DIFFICULTY_CONFIGS[selectedDifficulty] || DIFFICULTY_CONFIGS.NORMAL;
+                        const speedBoost = Math.floor(currentScore / 10) * cfg.speedScale;
+                        pipeSpeed = cfg.basePipeSpeed + speedBoost;
+                        spawnInterval = Math.max(25, Math.round(220 / pipeSpeed));
+
+                        updatePhysicsSettings();
+
+                        document.getElementById('scoreText').innerText = currentScore;
+                        sounds.playScore();
+
+                        const currentBest = getBestScore();
+                        if (currentScore > currentBest) {
+                            safeSetStorage(`flappyBuddy_best_${selectedDifficulty}`, currentScore.toString());
+                            updateBestScoreDisplays();
+                        }
+
+                        for (let p = 0; p < 8; p++) {
+                            particles.push(new Particle(
+                                bird.x,
+                                bird.y,
+                                (Math.random() - 0.5) * 4,
+                                (Math.random() - 0.5) * 4,
+                                '#38bdf8',
+                                20
+                            ));
+                        }
+                    }
+
+                    if (pipe.x + pipe.width < -30) {
+                        pipes.splice(i, 1);
+                    }
+                }
+
+                if (!bird.alive) {
+                    triggerGameOver();
+                }
+            }
+
+            // Render Bird & Particles
+            bird.update();
+            bird.draw();
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw();
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            for (let i = feathers.length - 1; i >= 0; i--) {
+                const f = feathers[i];
+                f.update();
+                f.draw();
+                if (f.life <= 0) feathers.splice(i, 1);
+            }
+
+            drawGround();
+
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
+
+        document.getElementById('restartBtn').addEventListener('click', () => {
+            startGame();
+        });
+
+        document.getElementById('mainMenuBtn').addEventListener('click', () => {
+            gameState = 'START';
+            document.getElementById('gameOverModal').classList.add('hidden');
+            document.getElementById('startModal').classList.remove('hidden');
+            document.getElementById('hudOverlay').classList.add('opacity-0');
+        });
+
+        document.getElementById('leaderboardBtn').addEventListener('click', openLeaderboard);
+
+        document.getElementById('soundToggleBtn').addEventListener('click', () => {
+            sounds.muted = !sounds.muted;
+            const icon = document.getElementById('soundIcon');
+            if (sounds.muted) {
+                icon.className = 'fa-solid fa-volume-xmark text-slate-500';
+            } else {
+                icon.className = 'fa-solid fa-volume-high text-sky-400';
+            }
+        });
+
+        document.getElementById('saveScoreBtn').addEventListener('click', () => {
+            const nameInput = document.getElementById('playerNameInput');
+            const name = nameInput.value.trim() || '무명 학생';
+            const data = JSON.parse(safeGetStorage('flappyBuddy_leaderboard', '[]'));
+            data.push({ name, score: currentScore, mode: (DIFFICULTY_CONFIGS[selectedDifficulty] || DIFFICULTY_CONFIGS.NORMAL).name, date: new Date().toLocaleDateString() });
+            safeSetStorage('flappyBuddy_leaderboard', JSON.stringify(data));
+            nameInput.value = '';
+            openLeaderboard();
+        });
+
+        // Break Timer Logic
+        let breakTimeSeconds = 600;
+        setInterval(() => {
+            if (breakTimeSeconds > 0) {
+                breakTimeSeconds--;
+                const mins = Math.floor(breakTimeSeconds / 60);
+                const secs = breakTimeSeconds % 60;
+                const timerElem = document.getElementById('breakTimer');
+                if (timerElem) {
+                    timerElem.innerText = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+                }
+            }
+        }, 1000);
+
+        document.getElementById('resetTimerBtn').addEventListener('click', () => {
+            breakTimeSeconds = 600;
+            document.getElementById('breakTimer').innerText = '10:00';
+        });
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function openLeaderboard() {
+            renderLeaderboard();
+            document.getElementById('leaderboardModal').classList.remove('hidden');
+        }
+
+        function renderLeaderboard() {
+            const listElem = document.getElementById('leaderboardList');
+            const data = JSON.parse(safeGetStorage('flappyBuddy_leaderboard', '[]'));
+            if (data.length === 0) {
+                listElem.innerHTML = '<div class="text-center text-xs text-slate-500 py-4">아직 등록된 전교 랭킹이 없습니다!</div>';
+                return;
+            }
+            data.sort((a, b) => b.score - a.score);
+            listElem.innerHTML = data.slice(0, 10).map((item, idx) => `
+                <div class="flex justify-between items-center bg-slate-800/80 px-3 py-2 rounded-xl text-xs border border-slate-700/60">
+                    <div class="flex items-center gap-2">
+                        <span class="font-jua text-sm ${idx === 0 ? 'text-amber-400' : idx === 1 ? 'text-slate-300' : idx === 2 ? 'text-amber-600' : 'text-slate-400'}">${idx + 1}등</span>
+                        <span class="font-bold text-slate-200">${escapeHtml(item.name)}</span>
+                        <span class="text-[10px] px-1 py-0.2 rounded border border-slate-600 bg-slate-700/60 text-slate-300">${escapeHtml(item.mode || '보통')}</span>
+                    </div>
+                    <div class="font-jua text-sky-400 text-sm">${item.score}점</div>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(str) {
+            return String(str).replace(/[&<>"']/g, match => {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[match];
+            });
+        }
+
+        function clearLeaderboard() {
+            try {
+                localStorage.removeItem('flappyBuddy_leaderboard');
+            } catch(e) {}
+            renderLeaderboard();
+        }
+
+        // Initialize On Window Load
+        window.onload = function() {
+            updateBestScoreDisplays();
+            updatePhysicsSettings();
+            animationFrameId = requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>
